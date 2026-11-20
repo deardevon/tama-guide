@@ -141,6 +141,8 @@ main{padding-block:14px 48px;display:flex;flex-direction:column;gap:18px}
 .evo:hover{border-color:var(--gold)}
 .suggest{margin-top:26px;display:flex;flex-direction:column;align-items:center;gap:10px}
 .suggest .hand{margin:0;max-width:30ch}
+.sgroup{width:100%;max-width:560px;display:flex;flex-direction:column;align-items:center}
+.sgroup .sublabel{margin:8px 0 6px}
 .sgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:8px;width:100%;max-width:560px}
 .sg{display:flex;flex-direction:column;align-items:center;gap:2px;padding:8px 4px;border-radius:14px;border:2px solid transparent;background:var(--c-surface);color:var(--c-ink);font:inherit}
 .sg:hover{border-color:var(--gold)}
@@ -552,8 +554,8 @@ function goalSuggestions(p){
   const todo=ALL_ADULTS.filter(a=>fits(a)&&!p.tamas["adult:"+a.name]);
   if(!todo.length) return `<p class="hand" style="margin-top:28px">${c&&c.stage!=="Adult"?"You've raised every adult this Tama can become! Pick any goal above.":"You've raised every adult. Amazing!"}</p>`;
   return `<div class="suggest"><p class="hand">Pick a Goal Tama. ${c&&c.stage!=="Adult"?"These are ones your Tama can still become that you haven't raised yet:":"Here are some you haven't raised yet:"}</p>
-    <div class="sgrid">${todo.slice(0,12).map(a=>`<button class="sg" data-act="setgoal" data-a="${esc(a.name)}">${img("adult:"+a.name,a.name)}<span>${esc(a.name)}</span></button>`).join("")}</div>
-    ${todo.length>12?`<small class="muted">${todo.length-12} more in Guide → Evolving.</small>`:""}</div>`;
+    ${Object.entries(FIELDS).filter(([k])=>todo.some(a=>a.sp.field===k)).map(([k,F])=>`<div class="sgroup"><div class="sublabel">${F.name} · ${todo.filter(a=>a.sp.field===k).length} to go</div>
+      <div class="sgrid">${todo.filter(a=>a.sp.field===k).map(a=>`<button class="sg" data-act="setgoal" data-a="${esc(a.name)}">${img("adult:"+a.name,a.name)}<span>${esc(a.name)}</span></button>`).join("")}</div></div>`).join("")}</div>`;
 }
 function viewTama(){
   const p=P(), c=tamaByKey(p.current);
