@@ -91,7 +91,34 @@ main{padding-block:14px 48px;display:flex;flex-direction:column;gap:18px}
 .slot+.slot{margin-top:26px}
 .slot .ph{width:96px;height:96px;display:grid;place-items:center;border:2px dashed var(--c-line);border-radius:24px;font-family:var(--f-display);font-size:2.4rem;color:var(--c-muted)}
 .steps{margin-top:30px;display:flex;flex-direction:column;gap:12px;align-items:stretch;max-width:520px;margin-inline:auto}
-.step{display:grid;grid-template-columns:36px 1fr;gap:12px;align-items:start;text-align:left;padding:12px 14px;border-radius:18px;background:var(--c-sunk)}
+.step{text-align:left;border-radius:18px;background:var(--c-sunk)}
+.step>summary{display:grid;grid-template-columns:36px 1fr;gap:12px;align-items:start;padding:12px 14px;cursor:pointer;list-style:none;border-radius:18px}
+.step>summary::-webkit-details-marker{display:none}
+.step>summary:hover{background:color-mix(in srgb,var(--c-surface) 45%,transparent)}
+.more-hint{display:inline-flex;align-items:center;gap:6px;margin-top:8px;font-family:var(--f-display);font-weight:700;font-size:1.15rem;letter-spacing:.08em;color:var(--gold)}
+.more-hint i{font-style:normal;display:inline-block;transition:transform .2s}
+.step[open] .more-hint i{transform:rotate(180deg)}
+.more{margin:0 14px 14px;padding:12px 14px;border-radius:14px;background:var(--c-surface);display:flex;flex-direction:column;gap:10px;border-top:2px dashed var(--c-line)}
+@media (prefers-reduced-motion:no-preference){.step[open] .more{animation:openup .22s ease-out}}
+@keyframes openup{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
+.mrow{display:flex;align-items:center;gap:10px}
+.mrow .spr{--s:44px}
+.mrow .arrow{color:var(--gold);font-weight:800}
+.mrow small,.mfood small{color:var(--c-muted);font-size:.85rem}
+.mfood{display:grid;grid-template-columns:44px 1fr;gap:12px;align-items:center;padding-bottom:10px;border-bottom:1px solid var(--c-line)}
+.mfood .spr{--s:44px}
+.mfood b{font-family:var(--f-body);font-size:1rem;letter-spacing:0}
+.mfood .where{display:block;font-size:.92rem;font-weight:700;color:var(--gold)}
+.mfood .where .spr{--s:20px;margin:0 2px}
+.mfood small{display:block;margin:0}
+.mlist{margin:0;padding-left:18px;font-size:.9rem;display:flex;flex-direction:column;gap:4px}
+.madults{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+@media (max-width:480px){.madults{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.madult{display:flex;flex-direction:column;align-items:center;text-align:center;gap:2px;padding:8px 4px;border-radius:12px;background:var(--c-sunk);border:2px solid transparent;min-width:0}
+.madult .spr{--s:44px}
+.madult b{font-family:var(--f-body);font-size:.8rem;letter-spacing:0;line-height:1.2;overflow-wrap:anywhere}
+.madult small{margin:0;font-size:.72rem}
+.madult.isgoal{border-color:var(--gold)}
 .step .ic{width:32px;height:32px;border-radius:50%;display:grid;place-items:center;font-weight:800;background:var(--c-surface);color:var(--c-muted);font-size:.95rem}
 .step.done .ic{background:var(--good);color:var(--navy)}
 .step.now{box-shadow:inset 0 0 0 2px var(--gold)} .step.now .ic{background:var(--gold);color:var(--navy)}
@@ -409,7 +436,8 @@ const SUN=`<svg class="sun" viewBox="0 0 240 150" aria-hidden="true"><defs><clip
 
 /* ---------------- ROUTING ---------------- */
 const TABS=[["tama","My Tama"],["collections","Collections"],["guide","Guide"]];
-let ui={col:"tamas",guide:"stages",field:"all",q:"",confirm:null,editPlayer:false,addPlayer:false};
+let ui={col:"tamas",guide:"stages",field:"all",q:"",confirm:null,editPlayer:false,addPlayer:false,open:{}};
+document.addEventListener("toggle",e=>{const d=e.target; if(d.dataset&&d.dataset.open) ui.open[d.dataset.open]=d.open;},true);
 function route(){const h=location.hash.slice(1);return TABS.some(t=>t[0]===h)?h:"tama";}
 function render(){
   const cur=route();
@@ -446,16 +474,36 @@ function steps(cur,goal){
   const spState=c.sp?(c.sp===gs.id?"done":"no"):(c.field===gf?"now":fieldState==="no"?"no":"");
   const careState=c.adult?(c.adult===goal?"done":"no"):(c.sp===gs.id?"now":spState==="no"?"no":"");
   const icon={done:"✓",now:"➜",no:"✗","":""};
-  const mk=(st,n,title,body,extra)=>`<div class="step ${st}"><span class="ic">${icon[st]||n}</span><div><b>${title}</b><p>${body}</p>${extra||""}</div></div>`;
+  const mk=(st,n,title,body,extra,hint,more)=>`<details class="step ${st}" data-open="s${n}" ${ui.open["s"+n]?"open":""}><summary><span class="ic">${icon[st]||n}</span><div><b>${title}</b><p>${body}</p>${extra||""}<span class="more-hint">${hint}<i aria-hidden="true">▾</i></span></div></summary><div class="more">${more}</div></details>`;
+  const whereTxt=f=>f.where.startsWith("Egg")?`Egg Hunt in the ${F.name} · ${f.where.includes("&")?"Volcano or Spring":f.where.includes("Volcano")?"Volcano":"Spring"}`:"";
+  // 1. field: how the baby picks a field
+  const moreField=`<div class="mrow">${img("baby:Babymarutchi")}<span class="arrow">→</span>${img("kid:"+gf)}<span><b>${F.kid}</b><br><small>Babymarutchi becomes a ${F.kid}.</small></span></div>
+    <ul class="mlist"><li>Watch the Tama Cells. When you see 4 ${F.icon} ${F.iconName} icons, tap the Tama Cell to evolve.</li>
+    <li>Other icons lead to other Kids: ${Object.entries(FIELDS).filter(([k])=>k!==gf).map(([k,x])=>`${x.icon} ${x.iconName} → ${x.kid}`).join(", ")}.</li>
+    <li>The Baby stage lasts 1–4 hours. It gets sick once at 10 minutes, so have medicine ready.</li>
+    <li>Can't raise in the ${F.name} yet? New fields open at Planet Level 4 and 6 (see Guide → Planet Levels).</li></ul>`;
+  // 2. food: where to find each one
+  const moreFood=gs.fallback?`<div class="mrow">${img("food:Pellets")}<span><b>Pellets</b><br><small>The Kid's everyday food. Always in the Food menu.</small></span></div>
+    <ul class="mlist"><li>Feed Pellets and skip ${F.name} foods from the Egg Hunt.</li><li>If one field food gets ahead, the Kid grows into that species instead: ${SPECIES.filter(s=>s.field===gf&&!s.fallback).map(s=>`${esc(s.cell)} → ${s.name}`).join(", ")}.</li></ul>`
+    :gs.foods.map(f=>{const egg=f.where.startsWith("Egg"), ing=egg?"":f.where.replace("Lab Shop or cook ","").replace(" ×3","");
+      return `<div class="mfood">${img("food:"+f.name,f.name)}<div><b>${esc(f.name)}</b>
+        ${egg?`<span class="where">🥚 ${whereTxt(f)}</span>`:`<span class="where">🛒 Lab Shop, or 🍳 cook 3 × ${img("food:"+ing)}${esc(ing)} with Chef Shirotama</span>`}
+        <small>+${f.hunger} Hunger · +${f.pts} ${esc(gs.cell)} point${f.pts>1?"s":""}</small></div></div>`;}).join("")+
+      `<ul class="mlist"><li>Feed these while your Tama is a Kid. The food with the most points picks the species.</li><li>Dishes give the most: +4 points and +6 Hunger.</li><li>Cooking unlocks at Planet Level 3.</li></ul>`;
+  // 3. care: all four adults + tips
+  const tips=g.idx===0?["Fill a meter all the way to count it. Dishes give +6 Hunger. Happy Pancakes and Sleepy Herbal Tea give +20 Happy.","A Golden Peach (get all 9 eggs in an Egg Hunt) gives +20 Happy and takes away 1 care mistake.","Cheerful Popcorn stops your Tama getting sick after a care mistake for a while."]
+    :g.idx===1?["A Golden Peach (get all 9 eggs in an Egg Hunt) takes away 1 care mistake.","Cheerful Popcorn stops your Tama getting sick after a care mistake for a while.",`With 0 mistakes, don't fill both meters 5 times, or you'll get ${esc(gs.adults[0])} instead.`]
+    :g.idx===2?["Missing a few calls is okay here, but not more than 5.","Too many? A Golden Peach takes 1 away."]:["Missing calls adds care mistakes. You need 6 or more."];
+  const moreCare=`<div class="madults">${gs.adults.map((a,i)=>`<div class="madult ${a===goal?"isgoal":""}">${img("adult:"+a,a)}<b>${esc(a)}</b><small>${REQ_SHORT[i]}</small></div>`).join("")}</div><ul class="mlist">${tips.map(t=>`<li>${t}</li>`).join("")}</ul>`;
   const foods=gs.fallback?`<div class="foods"><span class="foodchip">${img("food:Pellets")}Pellets</span></div>`:`<div class="foods">${gs.foods.map(f=>`<span class="foodchip">${img("food:"+f.name)}${esc(f.name)}</span>`).join("")}</div>`;
   const care=["0","0 to 1","2 to 5","6 or more"][g.idx];
   let html=`<div class="steps">`;
   html+=mk(fieldState,1,`Raise Tama in: ${F.name}`,`As a baby, collect 4 ${F.icon} ${F.iconName} icons in the Tama Cells to become a ${F.kid}.`,
-    fieldState==="no"?`<small>Your Tama is in the ${esc(FIELDS[c.field].name)}, so it can't become ${esc(goal)}. Pick a goal from the ${esc(FIELDS[c.field].name)}.</small>`:"");
+    fieldState==="no"?`<small>Your Tama is in the ${esc(FIELDS[c.field].name)}, so it can't become ${esc(goal)}. Pick a goal from the ${esc(FIELDS[c.field].name)}.</small>`:"","How it works",moreField);
   html+=mk(spState,2,gs.fallback?"Feed: mostly Pellets":`Feed: ${esc(gs.cell)}`,gs.fallback?`Keep the ${F.kid} on Pellets so no field food wins. It grows into the ${gs.name} species.`:`Obtained from ${gs.foods.map(f=>esc(f.name)).join(", ").replace(/, ([^,]*)$/," or $1")}. It grows into the ${gs.name} species.`,
-    foods+(spState==="no"&&c.sp?`<small>Your Tama is the ${esc(spLabel(sp(c.sp)))} species, so it can't become ${esc(goal)}.</small>`:""));
+    foods+(spState==="no"&&c.sp?`<small>Your Tama is the ${esc(spLabel(sp(c.sp)))} species, so it can't become ${esc(goal)}.</small>`:""),gs.fallback?"How it works":"Where to find it",moreFood);
   html+=mk(careState,3,`Care mistakes allowed: ${care}`,g.idx===0?"And fill the Hunger and Happy meters all the way, 5 or more times each.":g.idx===1?"Almost perfect care is fine.":g.idx===2?"A few missed calls are okay.":"Lots of missed calls. This one's the easy one!",
-    g.idx<2?`<small>A Golden Peach (perfect Egg Hunt, 9 eggs) takes away 1 care mistake.</small>`:"");
+    "","Tips and all 4 adults",moreCare);
   html+=`</div>`;
   if(c.adult===goal) html+=`<div class="yay">Goal reached!</div>`;
   return html;
