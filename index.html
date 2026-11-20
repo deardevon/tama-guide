@@ -130,6 +130,30 @@ main{padding-block:14px 48px;display:flex;flex-direction:column;gap:18px}
 .foodchip{display:inline-flex;align-items:center;gap:4px;background:var(--c-surface);border-radius:999px;padding:2px 10px 2px 4px;font-size:.85rem;font-weight:700}
 .foodchip .spr{--s:22px}
 .yay{margin-top:24px;font-family:var(--f-display);font-size:2rem;letter-spacing:.1em;color:var(--gold)}
+.evolve{margin-top:6px;display:flex;flex-direction:column;align-items:center;gap:8px;width:100%}
+.evo-lbl{font-family:var(--f-display);font-weight:700;font-size:1.25rem;letter-spacing:.08em;color:var(--gold)}
+.evo-btns{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;max-width:560px}
+.evo{display:flex;flex-direction:column;align-items:center;gap:2px;min-width:100px;max-width:130px;flex:1 1 100px;padding:8px 6px;border-radius:16px;border:2px solid var(--c-line);background:var(--c-surface);color:var(--c-ink);font:inherit}
+.evo .spr{--s:44px}
+.evo span{font-weight:800;font-size:.82rem;line-height:1.2}
+.evo small{font-size:.7rem;color:var(--gold);font-weight:700}
+.evo.onpath{border-color:var(--gold)}
+.evo:hover{border-color:var(--gold)}
+.suggest{margin-top:26px;display:flex;flex-direction:column;align-items:center;gap:10px}
+.suggest .hand{margin:0;max-width:30ch}
+.sgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:8px;width:100%;max-width:560px}
+.sg{display:flex;flex-direction:column;align-items:center;gap:2px;padding:8px 4px;border-radius:14px;border:2px solid transparent;background:var(--c-surface);color:var(--c-ink);font:inherit}
+.sg:hover{border-color:var(--gold)}
+.sg .spr{--s:44px}
+.sg span{font-size:.78rem;font-weight:800;line-height:1.2;overflow-wrap:anywhere}
+.nextbox{margin-top:22px;display:flex;flex-direction:column;align-items:center;gap:8px}
+.nextbox small{font-size:.85rem}
+.btn.big{font-size:1.6rem;padding:8px 26px}
+.backup h3{text-align:center}
+.backup .muted{text-align:center}
+.codebox{width:100%;background:var(--c-sunk);color:var(--c-ink);border:2px solid var(--c-line);border-radius:14px;padding:10px 12px;font-family:var(--f-mono);font-size:.8rem;resize:vertical;margin-bottom:10px;word-break:break-all}
+.confirm-box{background:var(--c-sunk);border:2px solid var(--gold);border-radius:14px;padding:12px 14px;text-align:center;font-size:.92rem}
+.bad-msg{color:var(--bad);text-align:center;margin:8px 0 0;font-size:.9rem}
 
 /* collections */
 .summary{display:flex;flex-direction:column;gap:6px}
@@ -436,7 +460,7 @@ const SUN=`<svg class="sun" viewBox="0 0 240 150" aria-hidden="true"><defs><clip
 
 /* ---------------- ROUTING ---------------- */
 const TABS=[["tama","My Tama"],["collections","Collections"],["guide","Guide"]];
-let ui={col:"tamas",guide:"stages",field:"all",q:"",confirm:null,editPlayer:false,addPlayer:false,open:{}};
+let ui={col:"tamas",guide:"stages",field:"all",q:"",confirm:null,editPlayer:false,addPlayer:false,open:{},backup:{}};
 document.addEventListener("toggle",e=>{const d=e.target; if(d.dataset&&d.dataset.open) ui.open[d.dataset.open]=d.open;},true);
 function route(){const h=location.hash.slice(1);return TABS.some(t=>t[0]===h)?h:"tama";}
 function render(){
@@ -508,16 +532,81 @@ function steps(cur,goal){
   if(c.adult===goal) html+=`<div class="yay">Goal reached!</div>`;
   return html;
 }
+function nextForms(cur){
+  const c=tamaByKey(cur);
+  if(!c) return [tamaByKey("baby:Babymarutchi")];
+  if(c.stage==="Baby") return TAMA_LIST.filter(t=>t.stage==="Kid");
+  if(c.stage==="Kid") return TAMA_LIST.filter(t=>t.stage==="Young"&&t.field===c.field);
+  if(c.stage==="Young") return TAMA_LIST.filter(t=>t.stage==="Adult"&&t.sp===c.sp);
+  return [];
+}
+function evolveButtons(p){
+  const c=tamaByKey(p.current), list=nextForms(p.current); if(!list.length) return "";
+  const g=p.goal&&ADULT_INFO[p.goal], path=g?["kid:"+g.sp.field,"young:"+g.sp.id,"adult:"+p.goal]:[];
+  return `<div class="evolve"><div class="evo-lbl">${c?"It evolved! Tap what it became:":"Just hatched? Tap to start:"}</div>
+    <div class="evo-btns">${list.map(t=>{const on=path.includes(t.key);return `<button class="evo ${on?"onpath":""}" data-act="evolve" data-k="${t.key}">${img(t.key,t.name)}<span>${esc(t.name)}</span>${on?`<small>★ goal path</small>`:""}</button>`;}).join("")}</div></div>`;
+}
+function goalSuggestions(p){
+  const c=tamaByKey(p.current);
+  const fits=a=>!c||c.stage==="Adult"||((!c.field||a.sp.field===c.field)&&(!c.sp||a.sp.id===c.sp));
+  const todo=ALL_ADULTS.filter(a=>fits(a)&&!p.tamas["adult:"+a.name]);
+  if(!todo.length) return `<p class="hand" style="margin-top:28px">${c&&c.stage!=="Adult"?"You've raised every adult this Tama can become! Pick any goal above.":"You've raised every adult. Amazing!"}</p>`;
+  return `<div class="suggest"><p class="hand">Pick a Goal Tama. ${c&&c.stage!=="Adult"?"These are ones your Tama can still become that you haven't raised yet:":"Here are some you haven't raised yet:"}</p>
+    <div class="sgrid">${todo.slice(0,12).map(a=>`<button class="sg" data-act="setgoal" data-a="${esc(a.name)}">${img("adult:"+a.name,a.name)}<span>${esc(a.name)}</span></button>`).join("")}</div>
+    ${todo.length>12?`<small class="muted">${todo.length-12} more in Guide → Evolving.</small>`:""}</div>`;
+}
 function viewTama(){
   const p=P(), c=tamaByKey(p.current);
   return `${playersRow()}
   <section class="card center">
     <div class="slot"><h2>Current</h2>${c?img(c.key,c.name,"hero"):`<span class="ph">?</span>`}
-      <select class="pill-select" id="curSel" data-ch="current" aria-label="Current Tama">${tamaOptions(p.current)}</select></div>
+      <select class="pill-select" id="curSel" data-ch="current" aria-label="Current Tama">${tamaOptions(p.current)}</select>
+      ${evolveButtons(p)}</div>
     <div class="slot"><h2>Goal</h2>${p.goal?img("adult:"+p.goal,p.goal,"hero"):`<span class="ph">?</span>`}
       <select class="pill-select" id="goalSel" data-ch="goal" aria-label="Goal Tama">${goalOptions(p.goal)}</select></div>
-    ${p.goal?steps(p.current,p.goal):`<p class="hand" style="margin-top:28px">Pick a Goal Tama to see how to raise it.</p>`}
+    ${p.goal?steps(p.current,p.goal):goalSuggestions(p)}
+    ${c&&c.stage==="Adult"?`<div class="nextbox">${p.goal&&c.adult===p.goal?"":`<p class="hand" style="margin:0">${esc(c.name)} is all grown up!</p>`}<button class="btn primary big" data-act="nexttama">Start my next Tama</button><small class="muted">Sets Current back to Babymarutchi so you can pick a new goal.</small></div>`:""}
     ${SUN}
+  </section>`;
+}
+
+/* ---------------- BACKUP CODE ---------------- */
+// Lists are append-only: new items must go at the end so old codes still restore correctly.
+const BK={t:()=>TAMA_LIST.map(t=>t.key),o:()=>TOY_LIST.filter(i=>i.store==="toys").map(i=>i.id),d:()=>DECO_LIST.filter(i=>i.store==="deco").map(i=>i.id),k:()=>ALL_CODES,m:()=>MISSIONS.map(m=>m.id)};
+const toB64=u=>btoa(String.fromCharCode(...u)).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
+const fromB64=s=>Uint8Array.from(atob(String(s).replace(/-/g,"+").replace(/_/g,"/")),ch=>ch.charCodeAt(0));
+function packBits(list,obj){const u=new Uint8Array(Math.ceil(list.length/8));list.forEach((k,i)=>{if(obj&&obj[k])u[i>>3]|=1<<(i&7);});return toB64(u);}
+function unpackBits(list,s){const u=s?fromB64(s):new Uint8Array(0),o={};list.forEach((k,i)=>{if(u[i>>3]&(1<<(i&7)))o[k]=true;});return o;}
+function makeBackup(){
+  const pls=allPlanets(), metList=pls.flatMap(x=>x.visitors.map(v=>x.name+"|"+v));
+  const data={v:1,cp:state.customPlanets,p:state.players.map(x=>{const vis={},met={};pls.forEach(pl=>{const s=x.planets[pl.name];if(s&&s.visited)vis[pl.name]=1;(pl.visitors||[]).forEach(v=>{if(s&&s.met&&s.met[v])met[pl.name+"|"+v]=1;});});
+    return {n:x.name,c:x.current,g:x.goal,t:packBits(BK.t(),x.tamas),o:packBits(BK.o(),x.toys),d:packBits(BK.d(),x.deco),k:packBits(BK.k(),x.codes),m:packBits(BK.m(),x.missions),pv:packBits(pls.map(q=>q.name),vis),pm:packBits(metList,met)};})};
+  return "TAMA1-"+toB64(new TextEncoder().encode(JSON.stringify(data)));
+}
+function readBackup(code){
+  const s=String(code||"").trim().replace(/\s+/g,"");
+  if(!s.startsWith("TAMA1-")) throw new Error("That doesn't look like a backup code. It should start with TAMA1-");
+  const data=JSON.parse(new TextDecoder().decode(fromB64(s.slice(6))));
+  const cps=data.cp||[], pls=PLANETS.filter(q=>PLANET_UNLOCK[q[0]]).map(q=>({name:q[0],visitors:q[3].split(" or "),lvl:PLANET_UNLOCK[q[0]]})).sort((a,b)=>a.lvl-b.lvl).concat(cps.map(n=>({name:n,visitors:[]})));
+  const metList=pls.flatMap(x=>x.visitors.map(v=>x.name+"|"+v));
+  const players=data.p.map(x=>{const np=newPlayer(x.n||"Player");np.current=x.c||"";np.goal=x.g||"";np.tamas=unpackBits(BK.t(),x.t);np.toys=unpackBits(BK.o(),x.o);np.deco=unpackBits(BK.d(),x.d);np.codes=unpackBits(BK.k(),x.k);np.missions=unpackBits(BK.m(),x.m);
+    const vis=unpackBits(pls.map(q=>q.name),x.pv), met=unpackBits(metList,x.pm);
+    pls.forEach(pl=>{const m={};pl.visitors.forEach(v=>{if(met[pl.name+"|"+v])m[v]=true;});if(vis[pl.name]||Object.keys(m).length)np.planets[pl.name]={visited:!!vis[pl.name],met:m};});return np;});
+  if(!players.length) throw new Error("That backup code has no players in it.");
+  return {players,customPlanets:cps};
+}
+function backupCard(){
+  const b=ui.backup;
+  return `<section class="card backup"><h3>Backup</h3>
+    <p class="muted" style="margin:4px 0 12px;font-size:.92rem">${dbRef?"Your ticks save to your account. A backup code lets you move them to another device or copy of this guide.":"Your ticks are saved on this device only. Make a backup code and text it to a grown-up, so nothing gets lost on a new phone or tablet."}</p>
+    ${b.code?`<textarea class="codebox" id="bkOut" readonly rows="3" aria-label="Your backup code">${esc(b.code)}</textarea>
+      <div class="row" style="justify-content:center"><button class="btn primary" data-act="bkcopy">Copy code</button>${navigator.share?`<button class="btn" data-act="bkshare">Send…</button>`:""}<button class="btn" data-act="bkhide">Done</button></div>`
+      :`<div class="row" style="justify-content:center"><button class="btn primary" data-act="bkmake">Make backup code</button></div>`}
+    <div class="sublabel" style="margin-top:18px">Restore from a code</div>
+    ${b.preview?`<div class="confirm-box"><p style="margin:0 0 8px">This code has <b>${b.preview.players.map(x=>esc(x.name)).join(", ")}</b> with ${b.preview.players.map(x=>Object.keys(x.tamas).length).reduce((a,c)=>a+c,0)} Tamas collected. Restoring replaces everything on this device.</p>
+      <div class="row" style="justify-content:center"><button class="btn primary" data-act="bkrestore">Yes, restore</button><button class="btn" data-act="bkcancel">Cancel</button></div></div>`
+    :`<textarea class="codebox" id="bkIn" rows="2" placeholder="Paste a backup code here" aria-label="Backup code to restore">${esc(b.input||"")}</textarea>
+      <div class="row" style="justify-content:center"><button class="btn" data-act="bkcheck">Restore</button></div>${b.err?`<p class="bad-msg">${esc(b.err)}</p>`:""}`}
   </section>`;
 }
 
@@ -573,7 +662,7 @@ function viewCollections(){
         <span class="mnum">${MISSIONS.indexOf(m)+1}</span><span class="mtxt"><b>${esc(m.title)}</b><small>${esc(m.how)}</small>${n!=null?`<small class="mauto">Ticked in Collections: ${n}/${m.goal}</small>`:""}</span><span class="mgoal">${m.goal.toLocaleString()}</span></label>`;}).join("")}
       ${l.length?"":`<p class="empty">No missions match that search.</p>`}`;
   }
-  return html+SUN+`</section>`;
+  return html+SUN+`</section>`+backupCard();
 }
 
 /* ---------------- GUIDE ---------------- */
@@ -639,7 +728,18 @@ document.addEventListener("click",e=>{
     case "col": ui.col=b.dataset.k; ui.q=""; render(); return;
     case "guide": ui.guide=b.dataset.k; render(); return;
     case "field": ui.field=b.dataset.k; render(); return;
-    case "setgoal": { const g=b.dataset.a; if(p.goal===g){ toast(g+" is already your goal"); return; } p.goal=g; toast(`★ ${g} is ${state.players.length>1?p.name+"'s":"your"} goal! See My Tama for how.`); break; }
+    case "setgoal": { const g=b.dataset.a; if(p.goal===g){ toast(g+" is already your goal"); return; } p.goal=g; toast(`★ ${g} is ${state.players.length>1?p.name+"'s":"your"} goal!${route()==="tama"?"":" See My Tama for how."}`); break; }
+    case "evolve": { const k=b.dataset.k, t=tamaByKey(k); p.current=k; const isNew=!p.tamas[k]; p.tamas[k]=true; ui.open={};
+      toast(p.goal&&t.adult===p.goal?`★ Goal reached: ${t.name}!`:isNew?`${t.name} added to Collections`:`Now: ${t.name}`); break; }
+    case "nexttama": p.current="baby:Babymarutchi"; p.tamas["baby:Babymarutchi"]=true; p.goal=""; ui.open={}; toast("New egg! Pick your next goal."); window.scrollTo(0,0); break;
+    case "bkmake": ui.backup={code:makeBackup()}; render(); return;
+    case "bkhide": ui.backup={}; render(); return;
+    case "bkcopy": { const t=$("#bkOut"); const ok=()=>toast("Backup code copied");
+      try{ navigator.clipboard.writeText(ui.backup.code).then(ok,()=>{t.select();toast("Code selected. Copy it from your menu.");}); }catch(err){ t.select(); toast("Code selected. Copy it from your menu."); } return; }
+    case "bkshare": navigator.share({title:"Tama Guide backup",text:ui.backup.code}).catch(()=>{}); return;
+    case "bkcheck": { const v=$("#bkIn").value; try{ ui.backup={preview:readBackup(v),input:v}; }catch(err){ ui.backup={input:v,err:err.message&&err.message.startsWith("That")?err.message:"That code didn't work. Check it was copied in full."}; } render(); return; }
+    case "bkcancel": ui.backup={}; render(); return;
+    case "bkrestore": { const r=ui.backup.preview; state.players=r.players; state.active=r.players[0].id; r.customPlanets.forEach(n=>{if(!state.customPlanets.includes(n))state.customPlanets.push(n);}); ui.backup={}; toast("Backup restored!"); break; }
     case "pladd": { const n=($("#newPlanet").value||"").trim(); if(!n) return; if(allPlanets().some(x=>x.name.toLowerCase()===n.toLowerCase())){toast("That planet is already on the list");return;} state.customPlanets.push(n); break; }
     case "plrem": ui.confirm="pl:"+b.dataset.pl; render(); return;
     case "plremok": state.customPlanets=state.customPlanets.filter(n=>n!==b.dataset.pl); state.players.forEach(x=>delete x.planets[b.dataset.pl]); ui.confirm=null; break;
