@@ -164,6 +164,12 @@ main{padding-block:14px 48px;display:flex;flex-direction:column;gap:18px}
 .adult .spr{--s:52px}
 .adult b{font-size:.88rem;line-height:1.2;overflow-wrap:anywhere}
 .adult small{font-size:.75rem;color:var(--c-muted);line-height:1.3}
+button.adult{border:2px solid transparent;color:var(--c-ink);font:inherit;cursor:pointer;position:relative}
+button.adult:hover{border-color:var(--c-line)}
+button.adult.isgoal{border-color:var(--gold);box-shadow:0 0 0 2px var(--gold)}
+.goalbadge{position:absolute;top:6px;right:8px;font-family:var(--f-display);font-weight:700;font-size:1.05rem;letter-spacing:.06em;color:var(--gold)}
+.tip{text-align:center;margin:4px 0 0;font-size:.9rem;color:var(--c-muted)}
+.tip b{color:var(--gold)}
 .tablewrap{overflow-x:auto;margin-top:10px}
 table{border-collapse:collapse;width:100%;font-size:.9rem}
 th{text-align:left;font-family:var(--f-display);font-size:1.15rem;letter-spacing:.08em;color:var(--c-muted);font-weight:700;padding:6px 10px 6px 0;border-bottom:1px solid var(--c-line)}
@@ -534,11 +540,12 @@ function viewGuide(){
       <div class="stage"><div class="who">${img("young:t-toddle")}${img("young:i-glide")}${img("young:f-chirp")}</div><h3>Young</h3><ul><li>The Kid's favourite food decides the species</li><li>Mostly Pellets (or no clear favourite) gives Sprout or Float</li><li>Each field has 4 species</li></ul></div>
       <div class="stage"><div class="who">${img("adult:Tropical Mametchi")}${img("adult:Kuchipatchi")}</div><h3>Adult</h3><ul><li>0 mistakes and meters filled 5+ times each: the special adult</li><li>0–1 mistakes: second adult</li><li>2–5 mistakes: third adult</li><li>6+ mistakes: fourth adult</li></ul></div>
     </div>
-    <div class="fieldtabs" style="margin-top:22px">${[["all","All"],...Object.entries(FIELDS).map(([k,v])=>[k,v.name])].map(([k,l])=>`<button class="btn small ${ui.field===k?"primary":""}" data-act="field" data-k="${k}">${l}</button>`).join("")}</div>`;
+    <div class="fieldtabs" style="margin-top:22px">${[["all","All"],...Object.entries(FIELDS).map(([k,v])=>[k,v.name])].map(([k,l])=>`<button class="btn small ${ui.field===k?"primary":""}" data-act="field" data-k="${k}">${l}</button>`).join("")}</div>
+    <p class="tip">Tap any adult to make it your Goal Tama.${P().goal?` Your goal right now: <b>${esc(P().goal)}</b>.`:""}</p>`;
     SPECIES.filter(s=>ui.field==="all"||s.field===ui.field).forEach(s=>{
       html+=`<div class="species"><div class="hd">${img("young:"+s.id,spLabel(s),"")}<h3>${esc(spLabel(s))}</h3><span class="fav">${s.fallback?img("food:Pellets")+"Mostly Pellets":img("cell:"+s.id)+"Loves "+esc(s.cell)}</span></div>
         ${s.fallback?`<p class="muted" style="margin:8px 0 0;font-size:.9rem">Appears if a ${FIELDS[s.field].kid} eats mostly Pellets or has no clear favourite food.</p>`:`<div class="foods" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:10px">${s.foods.map(f=>`<span class="foodchip">${img("food:"+f.name)}${esc(f.name)} +${f.pts}</span>`).join("")}</div>`}
-        <div class="adults">${s.adults.map((a,i)=>`<div class="adult">${img("adult:"+a,a)}<b>${esc(a)}</b><small>${REQS[i]}</small></div>`).join("")}</div></div>`;
+        <div class="adults">${s.adults.map((a,i)=>{const g=P().goal===a;return `<button class="adult pick ${g?"isgoal":""}" data-act="setgoal" data-a="${esc(a)}" aria-pressed="${g}" aria-label="${g?esc(a)+" is your Goal Tama":"Make "+esc(a)+" your Goal Tama"}">${g?`<span class="goalbadge">★ Goal</span>`:""}${img("adult:"+a,a)}<b>${esc(a)}</b><small>${REQS[i]}</small></button>`;}).join("")}</div></div>`;
     });
   } else if(ui.guide==="food"){
     html+=`<h2>Food &amp; Cooking</h2><p class="muted" style="margin:0 0 6px">Field foods come from the Egg Hunt in each field. Big dishes are sold in the Lab Shop, or you can cook them from 3 of an ingredient. The points go into the Kid's favourite-food cell.</p>
@@ -584,6 +591,7 @@ document.addEventListener("click",e=>{
     case "col": ui.col=b.dataset.k; ui.q=""; render(); return;
     case "guide": ui.guide=b.dataset.k; render(); return;
     case "field": ui.field=b.dataset.k; render(); return;
+    case "setgoal": { const g=b.dataset.a; if(p.goal===g){ toast(g+" is already your goal"); return; } p.goal=g; toast(`★ ${g} is ${state.players.length>1?p.name+"'s":"your"} goal! See My Tama for how.`); break; }
     case "pladd": { const n=($("#newPlanet").value||"").trim(); if(!n) return; if(allPlanets().some(x=>x.name.toLowerCase()===n.toLowerCase())){toast("That planet is already on the list");return;} state.customPlanets.push(n); break; }
     case "plrem": ui.confirm="pl:"+b.dataset.pl; render(); return;
     case "plremok": state.customPlanets=state.customPlanets.filter(n=>n!==b.dataset.pl); state.players.forEach(x=>delete x.planets[b.dataset.pl]); ui.confirm=null; break;
